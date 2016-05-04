@@ -23,6 +23,7 @@ import com.veinhorn.scrollgalleryview.loader.MediaLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by veinhorn on 6.8.15.
@@ -38,6 +39,7 @@ public class ScrollGalleryView extends LinearLayout {
     private int thumbnailSize; // width and height in pixels
     private boolean zoomEnabled;
     private boolean thumbnailsHiddenEnabled;
+    private OnThumbnailClickListener thumbnailClickListener;
 
     // Views
     private LinearLayout thumbnailsContainer;
@@ -53,10 +55,19 @@ public class ScrollGalleryView extends LinearLayout {
 
     private final OnClickListener thumbnailOnClickListener = new OnClickListener() {
         @Override public void onClick(View v) {
-            scroll(v);
-            viewPager.setCurrentItem((int) v.getTag(), true);
+            if(v.getTag() instanceof Integer){
+                scroll(v);
+                viewPager.setCurrentItem((int) v.getTag(), true);
+            }
+            onThumbnailClicked(v.getTag());
         }
     };
+
+    private void onThumbnailClicked(Object tag) {
+        if(thumbnailClickListener != null){
+            thumbnailClickListener.onClicked(tag);
+        }
+    }
 
     public ScrollGalleryView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -71,7 +82,8 @@ public class ScrollGalleryView extends LinearLayout {
         horizontalScrollView = (HorizontalScrollView) findViewById(R.id.thumbnails_scroll_view);
 
         thumbnailsContainer = (LinearLayout) findViewById(R.id.thumbnails_container);
-        thumbnailsContainer.setPadding(displayProps.x / 2, 0, displayProps.x / 2, 0);
+        thumbnailsContainer.setPadding(0, 0, 0, 0);
+//        thumbnailsContainer.setPadding(displayProps.x / 2, 0, displayProps.x / 2, 0);
     }
 
     public ScrollGalleryView setFragmentManager(FragmentManager fragmentManager) {
@@ -178,12 +190,22 @@ public class ScrollGalleryView extends LinearLayout {
         return point;
     }
 
-    private ImageView addThumbnail(Bitmap image) {
+    public ImageView addThumbnail(Bitmap image) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(thumbnailSize, thumbnailSize);
         lp.setMargins(10, 10, 10, 10);
         Bitmap thumbnail = createThumbnail(image);
 
         ImageView thumbnailView = createThumbnailView(lp, thumbnail);
+        thumbnailsContainer.addView(thumbnailView);
+        return thumbnailView;
+    }
+
+    public ImageView addExtraThumbnail(Bitmap image, Object tag) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(thumbnailSize, thumbnailSize);
+        lp.setMargins(10, 10, 10, 10);
+        Bitmap thumbnail = createThumbnail(image);
+
+        ImageView thumbnailView = createExtraThumbnailView(lp, thumbnail,tag);
         thumbnailsContainer.addView(thumbnailView);
         return thumbnailView;
     }
@@ -198,6 +220,16 @@ public class ScrollGalleryView extends LinearLayout {
         return thumbnailView;
     }
 
+    private ImageView createExtraThumbnailView(LinearLayout.LayoutParams lp, Bitmap thumbnail, Object tag) {
+        ImageView thumbnailView = new ImageView(context);
+        thumbnailView.setLayoutParams(lp);
+        thumbnailView.setImageBitmap(thumbnail);
+        thumbnailView.setTag(tag);
+        thumbnailView.setOnClickListener(thumbnailOnClickListener);
+        thumbnailView.setScaleType(ImageView.ScaleType.CENTER);
+        return thumbnailView;
+    }
+
     private Bitmap createThumbnail(Bitmap image) {
         return ThumbnailUtils.extractThumbnail(image, thumbnailSize, thumbnailSize);
     }
@@ -207,6 +239,15 @@ public class ScrollGalleryView extends LinearLayout {
         pagerAdapter = new ScreenSlidePagerAdapter(fragmentManager, mListOfMedia, zoomEnabled);
         viewPager.setAdapter(pagerAdapter);
         viewPager.addOnPageChangeListener(viewPagerChangeListener);
+    }
+
+    public void setMedia(List<MediaInfo> images){
+        mListOfMedia = new ArrayList<>();
+        thumbnailsContainer.removeAllViews();
+        pagerAdapter = new ScreenSlidePagerAdapter(fragmentManager, mListOfMedia, zoomEnabled);
+        viewPager.setAdapter(pagerAdapter);
+        viewPager.addOnPageChangeListener(viewPagerChangeListener);
+        addMedia(images);
     }
 
     private void scroll(View thumbnail) {
@@ -225,5 +266,9 @@ public class ScrollGalleryView extends LinearLayout {
             inSampleSize *= 2;
         }
         return inSampleSize;
+    }
+
+    public void setOnThumbnailClickListener(OnThumbnailClickListener thumbnailClickListener) {
+        this.thumbnailClickListener = thumbnailClickListener;
     }
 }
